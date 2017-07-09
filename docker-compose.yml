@@ -1,12 +1,19 @@
+#front:
+#  image: pupscan/ticket-front
+#  container_name: ticket-front
+#  ports:
+#      - 8080:8080
+#  links:
+#      - ticket:ticket
+
 ticket:
-  image:
+  image: pupscan/ticket-back
+  container_name: ticket-back
   links:
       - mongo:mongo
 
 mongo:
    image: mongo:latest
    container_name: mongo
-   ports:
-    - "27017:27017"
    volumes:
     - ./data/mongo:/data/db
