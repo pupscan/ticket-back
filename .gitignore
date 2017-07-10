@@ -22,3 +22,9 @@ nbbuild/
 dist/
 nbdist/
 .nb-gradle/
+/data/
+data/
+src/main/resources/application-prod.properties
+src/main/resources/static/
+src/main/resources/templates/
+src/test/

@@ -6,9 +6,11 @@ import com.fasterxml.jackson.databind.DeserializationContext
 import com.fasterxml.jackson.databind.JsonDeserializer
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import org.apache.tomcat.util.codec.binary.Base64
+import org.slf4j.LoggerFactory
 import org.springframework.boot.SpringApplication
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Profile
 import org.springframework.data.annotation.Id
 import org.springframework.data.domain.Sort
 import org.springframework.data.mongodb.core.index.TextIndexed
@@ -22,9 +24,7 @@ import org.springframework.http.HttpMethod
 import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import org.springframework.web.client.RestTemplate
 import org.springframework.web.servlet.config.annotation.CorsRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter
@@ -66,6 +66,14 @@ class TicketController(val repository: TicketRepository) {
         }.toList()
     }
 
+//    fun totalByDayOnTheCurrentWeek(tagName: String = "all"): List<Int> {
+//        val from = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+//        (0..6L).map {
+//            val current = from.plusDays(it)
+//        }
+//
+//    }
+
     @RequestMapping("/main")
     fun main(): All {
         val all = totalByMonthOnTheCurrentYears()
@@ -76,12 +84,6 @@ class TicketController(val repository: TicketRepository) {
 
     @RequestMapping("/trend/value/{tagName}")
     fun trend(@PathVariable tagName: String = "all"): Int {
-//        val toLastWeek = LocalDate.now().with(TemporalAdjusters.previous(DayOfWeek.SUNDAY))
-//        val fromLastWeek = toLastWeek.with(TemporalAdjusters.previous(DayOfWeek.MONDAY))
-//        val amountLastWeek  = repository.findByCreatedDateBetween(fromLastWeek, toLastWeek.plusDays(1))
-//                .filter { if (tagName != "all") it.tags.contains(tagName) else true }
-//                .toList().size.toDouble()
-
         val from = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         val to = LocalDate.now()
         val amountCurrentWeek = repository.findByCreatedDateBetween(from, to.plusDays(1))
@@ -105,7 +107,7 @@ class TicketController(val repository: TicketRepository) {
     @RequestMapping("/all")
     fun all() = repository.findByCreatedDateBetween(
             LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
-            LocalDate.now(),
+            LocalDate.now().plusDays(1),
             Sort(Sort.Order(Sort.Direction.DESC, "CreatedDate")))
             .map {
                 SimpleTicket(
@@ -118,6 +120,24 @@ class TicketController(val repository: TicketRepository) {
                         it.messageSubject,
                         it.message.escapeln().truncat(200))
             }
+
+    @PostMapping("/search")
+    fun search(@RequestBody(required = false) search: String?): List<SimpleTicket> {
+        if (search == null || search.isBlank()) return all()
+        return repository.findTop10ByOrderByScoreDescCreatedDateDesc(TextCriteria().matchingAny(*search.split(' ')
+                .toTypedArray()))
+                .map {
+                    SimpleTicket(
+                            it.status,
+                            it.createdDate.format(DateTimeFormatter.ofPattern("dd/MM hh:mm")),
+                            it.updatedDate.format(DateTimeFormatter.ofPattern("dd/MM hh:mm")),
+                            it.tags.joinToString(),
+                            it.name,
+                            it.mail,
+                            it.messageSubject,
+                            it.message.escapeln().truncat(200))
+                }
+    }
 }
 
 
@@ -157,16 +177,18 @@ interface TicketRepository : CrudRepository<Ticket, String> {
             "CreatedDate")))
             : List<Ticket>
 
-    fun findAllByOrderByScoreDesc(textCriteria: TextCriteria): List<Ticket>
+    fun findTop10ByOrderByScoreDescCreatedDateDesc(textCriteria: TextCriteria): List<Ticket>
 }
 
 
+@Profile("prod")
 @Service
-class UpdateData(val repository: TicketRepository)  {
+class UpdateData(val repository: TicketRepository) {
+    val logger = LoggerFactory.getLogger(UpdateData::class.java)
 
     @Scheduled(fixedDelay = 3_600_000, initialDelay = 0)
     fun run() {
-        println("Migration Start!")
+        logger.info("Migration Start!")
         repository.deleteAll()
         val restTemplate = RestTemplate().exchange(
                 "https://pupscan.zendesk.com/api/v2/incremental/tickets.json?start_time=0",
@@ -188,7 +210,7 @@ class UpdateData(val repository: TicketRepository)  {
                             it.tags)
                 }
                 .forEach { repository.save(it) }
-        println("Migration done!")
+        logger.info("Migration done!")
     }
 }
 
