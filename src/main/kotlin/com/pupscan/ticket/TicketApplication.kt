@@ -56,45 +56,52 @@ fun main(args: Array<String>) {
 @RequestMapping("/ticket")
 class TicketController(val repository: TicketRepository) {
 
-    fun totalByMonthOnTheCurrentYears(tagName: String = "all"): List<Int> {
-        return (1..12).map {
-            val from = LocalDate.of(LocalDateTime.now().year, it, 1)
-            val to = from.with(TemporalAdjusters.lastDayOfMonth())
-            repository.findByCreatedDateBetween(from, to.plusDays(1))
-                    .filter { if (tagName != "all") it.tags.contains(tagName) else true }
-                    .toList().size
-        }.toList()
-    }
-
-//    fun totalByDayOnTheCurrentWeek(tagName: String = "all"): List<Int> {
-//        val from = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-//        (0..6L).map {
-//            val current = from.plusDays(it)
-//        }
-//
-//    }
-
     @RequestMapping("/main")
     fun main(): All {
-        val all = totalByMonthOnTheCurrentYears()
-        val unhappy = totalByMonthOnTheCurrentYears("unhappy")
-        val happy = totalByMonthOnTheCurrentYears("happy")
-        return All(all, unhappy, happy, all.sum(), unhappy.sum(), happy.sum())
+        val labelsAndTotal = totalByDayOnTheLast30Days()
+        val labels = labelsAndTotal.keys.map { it.dayOfMonth }.toList()
+        val total = labelsAndTotal.values.toList()
+        val unhappy = totalByDayOnTheLast30Days("unhappy").values.toList()
+        val happy = totalByDayOnTheLast30Days("happy").values.toList()
+        return All(labels, total, unhappy, happy, total.sum(), unhappy.sum(), happy.sum())
+    }
+
+
+    fun totalByDayOnTheLast30Days(tagName: String = "all"): Map<LocalDate, Int> {
+        val from = LocalDate.now().minusDays(30L)
+        return (0..30L).map {
+            val current = from.plusDays(it)
+            val totalDay = repository.findByCreatedDateBetween(current, current.plusDays(1L))
+                    .filter { if (tagName != "all") it.tags.contains(tagName) else true }
+                    .toList().size
+            current to totalDay
+        }.toMap()
     }
 
     @RequestMapping("/trend/value/{tagName}")
-    fun trend(@PathVariable tagName: String = "all"): Int {
+    fun trend(@PathVariable tagName: String = "all"): Map<String, Double> {
         val from = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         val to = LocalDate.now()
         val amountCurrentWeek = repository.findByCreatedDateBetween(from, to.plusDays(1))
                 .filter { if (tagName != "all") it.tags.contains(tagName) else true }
                 .toList().size
-        return amountCurrentWeek
+        return mapOf("total" to amountCurrentWeek.toDouble(), "trend" to computeTrend(tagName))
+    }
+
+    fun computeTrend(tagName: String): Double {
+        val trend = trendByTags(tagName)
+        val max = trend.size
+        val totalweek1 = trend.subList(max - 7, max).sum().toDouble()
+        val totalweek2 = trend.subList(max - 14, max - 7).sum().toDouble()
+        val totalweek3 = trend.subList(max - 21, max - 14).sum().toDouble()
+        val totalweek4 = trend.subList(max - 28, max - 21).sum().toDouble()
+        val average = listOf(totalweek2, totalweek3, totalweek4).average()
+        return (totalweek1 - average) / average * 100
     }
 
 
     @RequestMapping("/trend/{tagName}")
-    fun totalByDayOnTheLast30Days(@PathVariable tagName: String = "all"): List<Int> {
+    fun trendByTags(@PathVariable tagName: String = "all"): List<Int> {
         val from = LocalDate.now().minusDays(30)
         return (0..30).map {
             val current = from.plusDays(it.toLong())
@@ -150,7 +157,8 @@ data class SimpleTicket(val status: String,
                         val subject: String,
                         val message: String)
 
-data class All(val all: List<Int>,
+data class All(val labels: List<Int>,
+               val all: List<Int>,
                val unhappy: List<Int>,
                val happy: List<Int>,
                val totalAll: Int,
