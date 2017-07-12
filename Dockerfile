@@ -5,4 +5,4 @@ WORKDIR /workspace
 COPY . .
 RUN mvn install
 
-CMD ["java", "-jar", "./target/ticket-0.0.1-SNAPSHOT.jar"]
+CMD ["java", "-Dspring.profiles.active=prod", "-jar", "./target/ticket-0.0.1-SNAPSHOT.jar"]
