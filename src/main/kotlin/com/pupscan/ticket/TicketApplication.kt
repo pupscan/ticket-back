@@ -43,7 +43,7 @@ class TicketApplication {
     fun corsConfigurer() =
             object : WebMvcConfigurerAdapter() {
                 override fun addCorsMappings(registry: CorsRegistry) {
-                    registry.addMapping("/**").allowedOrigins("http://ticket.pupscan.com")
+                    registry.addMapping("/**").allowedOrigins("*")
                 }
             }
 }
