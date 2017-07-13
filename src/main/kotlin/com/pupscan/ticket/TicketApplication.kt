@@ -131,7 +131,7 @@ class TicketController(val repository: TicketRepository) {
     @PostMapping("/search")
     fun search(@RequestBody(required = false) search: String?): List<SimpleTicket> {
         if (search == null || search.isBlank()) return all()
-        return repository.findAllOrderByScoreDescCreatedDateDesc(TextCriteria().matchingAny(*search.split(' ')
+        return repository.findAllByOrderByScoreDescCreatedDateDesc(TextCriteria().matchingAny(*search.split(' ')
                 .toTypedArray()))
                 .map {
                     SimpleTicket(
@@ -185,7 +185,7 @@ interface TicketRepository : CrudRepository<Ticket, String> {
             "CreatedDate")))
             : List<Ticket>
 
-    fun findAllOrderByScoreDescCreatedDateDesc(textCriteria: TextCriteria): List<Ticket>
+    fun findAllByOrderByScoreDescCreatedDateDesc(textCriteria: TextCriteria): List<Ticket>
 }
 
 
