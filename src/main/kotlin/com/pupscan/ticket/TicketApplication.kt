@@ -41,7 +41,7 @@ class TicketApplication {
     fun corsConfigurer() =
             object : WebMvcConfigurerAdapter() {
                 override fun addCorsMappings(registry: CorsRegistry) {
-                    registry.addMapping("/**").allowedOrigins("http://localhost:8081")
+                    registry.addMapping("/**").allowedOrigins("*")
                 }
             }
 }
@@ -129,7 +129,7 @@ class TicketController(val repository: TicketRepository) {
     @PostMapping("/search")
     fun search(@RequestBody(required = false) search: String?): List<SimpleTicket> {
         if (search == null || search.isBlank()) return all()
-        return repository.findTop10ByOrderByScoreDescCreatedDateDesc(TextCriteria().matchingAny(*search.split(' ')
+        return repository.findAllByOrderByScoreDescCreatedDateDesc(TextCriteria().matchingAny(*search.split(' ')
                 .toTypedArray()))
                 .map {
                     SimpleTicket(
@@ -183,7 +183,7 @@ interface TicketRepository : CrudRepository<Ticket, String> {
             "CreatedDate")))
             : List<Ticket>
 
-    fun findTop10ByOrderByScoreDescCreatedDateDesc(textCriteria: TextCriteria): List<Ticket>
+    fun findAllByOrderByScoreDescCreatedDateDesc(textCriteria: TextCriteria): List<Ticket>
 }
 
 
