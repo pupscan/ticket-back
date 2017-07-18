@@ -1,0 +1,25 @@
+ticket-front:
+  image: pupscan/ticket-front:latest
+  container_name: ticket-front
+  restart: unless-stopped
+  environment:
+    - VIRTUAL_HOST=###
+    - VIRTUAL_PORT=8080
+    - BASE_URL=###
+
+ticket-back:
+  image: pupscan/ticket-back:latest
+  container_name: ticket-back
+  restart: unless-stopped
+  environment:
+    - VIRTUAL_HOST=####
+    - VIRTUAL_PORT=8080
+  links:
+    - mongo:mongo
+
+mongo:
+  image: mongo:latest
+  container_name: ticket-mongodb
+  volumes:
+    - ./data/mongo:/data/db
+    - /etc/localtime:/etc/localtime:ro
