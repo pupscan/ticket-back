@@ -5,7 +5,6 @@ import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.databind.DeserializationContext
 import com.fasterxml.jackson.databind.JsonDeserializer
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
-import org.apache.tomcat.util.codec.binary.Base64
 import org.slf4j.LoggerFactory
 import org.springframework.boot.SpringApplication
 import org.springframework.boot.autoconfigure.SpringBootApplication
@@ -28,7 +27,6 @@ import org.springframework.web.bind.annotation.*
 import org.springframework.web.client.RestTemplate
 import org.springframework.web.servlet.config.annotation.CorsRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter
-import java.nio.charset.Charset
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -131,7 +129,7 @@ class TicketController(val repository: TicketRepository) {
     @PostMapping("/search")
     fun search(@RequestBody(required = false) search: String?): List<SimpleTicket> {
         if (search == null || search.isBlank()) return all()
-        return repository.findAllOrderByScoreDescCreatedDateDesc(TextCriteria().matchingAny(*search.split(' ')
+        return repository.findAllByOrderByScoreDescCreatedDateDesc(TextCriteria().matchingAny(*search.split(' ')
                 .toTypedArray()))
                 .map {
                     SimpleTicket(
@@ -185,56 +183,56 @@ interface TicketRepository : CrudRepository<Ticket, String> {
             "CreatedDate")))
             : List<Ticket>
 
-    fun findAllOrderByScoreDescCreatedDateDesc(textCriteria: TextCriteria): List<Ticket>
+    fun findAllByOrderByScoreDescCreatedDateDesc(textCriteria: TextCriteria): List<Ticket>
 }
 
 
 @Profile("prod")
 @Service
 class UpdateData(val repository: TicketRepository) {
-    val logger = LoggerFactory.getLogger(UpdateData::class.java)
+    val logger = LoggerFactory.getLogger(UpdateData::class.java)!!
 
-    @Scheduled(fixedDelay = 3_600_000, initialDelay = 0)
+    @Scheduled(fixedDelay = (3_600_000 * 3), initialDelay = 0)
     fun run() {
         logger.info("Migration Start!")
+
         repository.deleteAll()
-        val restTemplate = RestTemplate().exchange(
-                "https://pupscan.zendesk.com/api/v2/incremental/tickets.json?start_time=0",
-                HttpMethod.GET,
-                HttpEntity<HttpHeaders>(HttpHeaders().apply { set("Authorization", "Basic YWxleGFuZHJlLmhlbWVyeUBwdXBzY2FuLmNvbTo/JVZ5Xk8jSjJDQnM=") }),
-                ZenDesk::class.java)
-        restTemplate.body.tickets
-                .map {
-                    Ticket(UUID.randomUUID().toString(),
-                            it.id,
-                            it.created_at,
-                            it.updated_at,
-                            it.status,
-                            it.via.channel,
-                            it.via.source.from.name,
-                            it.via.source.from.address ?: "",
-                            it.subject,
-                            it.description,
-                            it.tags)
-                }
-                .forEach { repository.save(it) }
+        var startTime = 0
+        var endTime = 0
+
+        do {
+            startTime = endTime
+
+            logger.info("Load page from startTime $startTime")
+            val restTemplate = RestTemplate().exchange(
+                    "https://pupscan.zendesk.com/api/v2/incremental/tickets.json?start_time=$startTime",
+                    HttpMethod.GET,
+                    HttpEntity<HttpHeaders>(HttpHeaders().apply { set("Authorization", "Basic YWxleGFuZHJlLmhlbWVyeUBwdXBzY2FuLmNvbTo/JVZ5Xk8jSjJDQnM=") }),
+                    ZenDesk::class.java)
+            val tickets = restTemplate.body.tickets
+            tickets.map {
+                Ticket(UUID.randomUUID().toString(),
+                        it.id,
+                        it.created_at,
+                        it.updated_at,
+                        it.status,
+                        it.via.channel,
+                        it.via.source.from.name,
+                        it.via.source.from.address ?: "",
+                        it.subject,
+                        it.description,
+                        it.tags)
+            }.forEach { repository.save(it) }
+            endTime = restTemplate.body.end_time
+            logger.info("${tickets.size} tickets loaded")
+        } while (startTime != endTime)
+
         logger.info("Migration done!")
     }
 }
 
-fun createHeaders(username: String, password: String): HttpHeaders {
-    return object : HttpHeaders() {
-        init {
-            val auth = username + ":" + password
-            val encodedAuth = Base64.encodeBase64(auth.toByteArray(Charset.forName("US-ASCII")))
-            val authHeader = "Basic " + String(encodedAuth)
-            set("Authorization", authHeader)
-        }
-    }
-}
-
 @JsonIgnoreProperties(ignoreUnknown = true)
-data class ZenDesk(val tickets: List<ZTicket>)
+data class ZenDesk(val tickets: List<ZTicket>, val end_time: Int)
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class ZTicket(val id: Long,
