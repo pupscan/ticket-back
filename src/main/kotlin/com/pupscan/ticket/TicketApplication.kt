@@ -126,6 +126,9 @@ class TicketController(val repository: TicketRepository) {
                         it.message.escapeln().truncat(200))
             }
 
+    @RequestMapping("/status/{statusName}")
+    fun countByStatus(@PathVariable statusName: String = "new") = repository.countByStatus(statusName)
+
     @PostMapping("/search")
     fun search(@RequestBody(required = false) search: String?): List<SimpleTicket> {
         if (search == null || search.isBlank()) return all()
@@ -179,6 +182,7 @@ data class Ticket(@Id val id: String,
 
 interface TicketRepository : CrudRepository<Ticket, String> {
     fun countByTags(tag: String): Int
+    fun countByStatus(status: String): Int
     fun findByCreatedDateBetween(from: LocalDate, to: LocalDate, order: Sort = Sort(Sort.Order(Sort.Direction.ASC,
             "CreatedDate")))
             : List<Ticket>
