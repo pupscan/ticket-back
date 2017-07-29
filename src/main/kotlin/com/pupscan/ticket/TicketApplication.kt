@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.DeserializationContext
 import com.fasterxml.jackson.databind.JsonDeserializer
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.SpringApplication
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.context.annotation.Bean
@@ -193,8 +194,12 @@ interface TicketRepository : CrudRepository<Ticket, String> {
 
 @Profile("prod")
 @Service
-class UpdateData(val repository: TicketRepository) {
+class UpdateData(@Value("\${zendek.authorization}") val zendeskAuthorization: String,
+                 val repository: TicketRepository) {
     val logger = LoggerFactory.getLogger(UpdateData::class.java)!!
+    init {
+        logger.info("Connect to Zendesk with authorizationCode=${zendeskAuthorization.safeDisplaySecret()}")
+    }
 
     @Scheduled(fixedDelay = (3_600_000 * 3), initialDelay = 0)
     fun run() {
@@ -211,7 +216,7 @@ class UpdateData(val repository: TicketRepository) {
             val restTemplate = RestTemplate().exchange(
                     "https://pupscan.zendesk.com/api/v2/incremental/tickets.json?start_time=$startTime",
                     HttpMethod.GET,
-                    HttpEntity<HttpHeaders>(HttpHeaders().apply { set("Authorization", "Basic YWxleGFuZHJlLmhlbWVyeUBwdXBzY2FuLmNvbTo/JVZ5Xk8jSjJDQnM=") }),
+                    HttpEntity<HttpHeaders>(HttpHeaders().apply { set("Authorization", "Basic $zendeskAuthorization") }),
                     ZenDesk::class.java)
             val tickets = restTemplate.body.tickets
             tickets.map {
@@ -268,3 +273,7 @@ class LocalDateTimeDeserializer : JsonDeserializer<LocalDateTime>() {
 
 fun String.escapeln() = this.replace("\n", "\\n").replace("\r", "\\n").replace("|", "")
 fun String.truncat(length: Int) = this.substring(0, if (length > this.length) this.length else length) + "..."
+fun String.safeDisplaySecret(): String {
+    if (this.isBlank()) return ""
+    return "X".repeat(this.length - 3) + this.substring(this.length - 3)
+}

@@ -1,19 +1,11 @@
-ticket-front:
-  image: pupscan/ticket-front:latest
-  container_name: ticket-front
-  restart: unless-stopped
-  environment:
-    - VIRTUAL_HOST=###
-    - VIRTUAL_PORT=8080
-    - BASE_URL=###
-
 ticket-back:
   image: pupscan/ticket-back:latest
   container_name: ticket-back
   restart: unless-stopped
+  ports:
+    - 8080:8080
   environment:
-    - VIRTUAL_HOST=####
-    - VIRTUAL_PORT=8080
+    - ZEN_DESK_AUTHORIZATION=AUTHORIZATION_HEADER_CODE
   links:
     - mongo:mongo
 
