@@ -117,6 +117,7 @@ class TicketController(val repository: TicketRepository) {
             Sort(Sort.Order(Sort.Direction.DESC, "CreatedDate")))
             .map {
                 SimpleTicket(
+                        it.zenDeskId,
                         it.status,
                         it.createdDate.format(DateTimeFormatter.ofPattern("dd/MM hh:mm")),
                         it.updatedDate.format(DateTimeFormatter.ofPattern("dd/MM hh:mm")),
@@ -137,6 +138,7 @@ class TicketController(val repository: TicketRepository) {
                 .toTypedArray()))
                 .map {
                     SimpleTicket(
+                            it.zenDeskId,
                             it.status,
                             it.createdDate.format(DateTimeFormatter.ofPattern("dd/MM hh:mm")),
                             it.updatedDate.format(DateTimeFormatter.ofPattern("dd/MM hh:mm")),
@@ -150,7 +152,8 @@ class TicketController(val repository: TicketRepository) {
 }
 
 
-data class SimpleTicket(val status: String,
+data class SimpleTicket(val zenDeskId: Long,
+                        val status: String,
                         val created: String,
                         val updated: String,
                         val tags: String,
