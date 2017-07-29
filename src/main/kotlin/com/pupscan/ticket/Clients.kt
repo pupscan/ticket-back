@@ -27,7 +27,7 @@ class ClientsService(val repository: ClientsRepository) {
             .filter { it.mail.isNotEmpty() }
             .map { SimpleClient(it.name.cleanName(), it.mail, it.status.capitalize()) }.toSet()
 
-    fun client(mail: String) = repository.findAllByMail(mail).map { Client(it.name, it.mail, it.tags) }
+    fun client(mail: String) = repository.findAllByMail(mail).map { Client(it.name, it.mail, it.tags) }.first()
 
     fun activities(mail: String) = activities(repository.findAllByMail(mail))
 
