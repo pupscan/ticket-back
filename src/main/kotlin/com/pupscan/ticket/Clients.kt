@@ -23,7 +23,7 @@ class ClientsController(val clientsService: ClientsService) {
 @Service
 class ClientsService(val repository: ClientsRepository) {
 
-    fun clients() = repository.findFirst40ByOrderByCreatedDateDesc()
+    fun clients() = repository.findFirst25ByOrderByCreatedDateDesc()
             .filter { it.mail.isNotEmpty() }
             .map { SimpleClient(it.name.cleanName(), it.mail, it.status.capitalize()) }.toSet()
 
@@ -54,7 +54,7 @@ data class Client(val name: String, val email: String, val tags: List<String>)
 
 
 interface ClientsRepository : Repository<Ticket, String> {
-    fun findFirst40ByOrderByCreatedDateDesc(): List<Ticket>
+    fun findFirst25ByOrderByCreatedDateDesc(): List<Ticket>
     fun findAllByMail(email: String): List<Ticket>
 }
 
