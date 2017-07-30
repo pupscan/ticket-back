@@ -31,8 +31,10 @@ class ClientService(val repository: ClientCommandRepository) {
     }
 
     private fun clientFilter(zTicket: ZTicket): Boolean {
+        val status = zTicket.status
         val mail = zTicket.via.source.from.address ?: ""
         return when {
+            status.contains("deleted") -> false
             mail.isBlank() -> false
             mail.contains("@").not() -> false
             mail.contains("pupscan.com") -> false

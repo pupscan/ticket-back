@@ -11,7 +11,7 @@ import java.util.*
 class ClientController(val clientRepository: ClientRepository, val activityRepository: ActivityRepository) {
 
     @RequestMapping("")
-    fun all() = Response(clientRepository.findFirst20ByOrderByName(), clientRepository.count())
+    fun all() = Response(clientRepository.findAll().take(20), clientRepository.count())
 
     @RequestMapping("/client/{clientId}")
     fun client(@PathVariable clientId: String = "") = clientRepository.findById(clientId)
@@ -24,7 +24,7 @@ data class Response(val clients: List<Client>, val total: Long)
 
 interface ClientRepository : Repository<Client, String> {
     fun count(): Long
-    fun findFirst20ByOrderByName(): List<Client>
+    fun findAll(): List<Client>
     fun findById(id: String): List<Client>
     fun findByEmail(email: String): Optional<Client>
 }
