@@ -25,7 +25,7 @@ class ClientsService(val repository: ClientsRepository) {
 
     fun clients() = repository.findFirst40ByOrderByCreatedDateDesc()
             .filter { it.mail.isNotEmpty() }
-            .map { SimpleClient(it.name.cleanName(), it.mail, it.status.capitalize()) }.toSet().take(25)
+            .map { SimpleClient(it.name.cleanName(), it.mail, it.status.capitalize()) }.toSet().take(20)
 
     fun client(mail: String) = repository.findAllByMail(mail).map { Client(it.name, it.mail, it.tags) }.first()
 
