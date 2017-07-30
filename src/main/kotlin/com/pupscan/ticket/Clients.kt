@@ -25,7 +25,7 @@ class ClientsService(val repository: ClientsRepository) {
 
     fun clients() = repository.findFirst40ByOrderByCreatedDateDesc()
             .filter { it.mail.isNotEmpty() }
-            .map { SimpleClient(it.name.cleanName(), it.mail, it.status.capitalize()) }.toSet().take(20)
+            .map { SimpleClient(it.name.cleanName(), it.mail, it.status.capitalize(), it.tags) }.toSet().take(20)
 
     fun client(mail: String) = repository.findAllByMail(mail).map { Client(it.name, it.mail, it.tags) }.first()
 
@@ -49,7 +49,7 @@ class ClientsService(val repository: ClientsRepository) {
 
 
 data class Activity(val type: String, val description: String, val date: String, val zenDeskId: Long)
-data class SimpleClient(val name: String, val email: String, val status: String)
+data class SimpleClient(val name: String, val email: String, val status: String, val tags: List<String>)
 data class Client(val name: String, val email: String, val tags: List<String>)
 
 
