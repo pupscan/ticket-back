@@ -26,7 +26,7 @@ class ClientService(val repository: ClientCommandRepository) {
                             it.status,
                             it.tags)
                 }
-                .toSet()
+                .distinctBy { it.email }
         repository.save(clients)
     }
 
