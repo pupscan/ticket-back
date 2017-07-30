@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.JsonDeserializer
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.pupscan.ticket.clients.ActivityService
 import com.pupscan.ticket.clients.ClientService
+import com.pupscan.ticket.companies.CompanyService
 import com.pupscan.ticket.tickets.TicketService
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -25,7 +26,8 @@ import java.time.format.DateTimeFormatter
 class UpdateData(@Value("\${zendek.authorization}") val zendeskAuthorization: String,
                  val ticketService: TicketService,
                  val clientService: ClientService,
-                 val ActivityService: ActivityService) {
+                 val activityService: ActivityService,
+                 val companyService: CompanyService) {
     val logger = LoggerFactory.getLogger(UpdateData::class.java)!!
 
     init {
@@ -58,7 +60,8 @@ class UpdateData(@Value("\${zendek.authorization}") val zendeskAuthorization: St
 
         ticketService.recreateVue(zTickets)
         clientService.recreateVue(zTickets)
-        ActivityService.recreateVue(zTickets)
+        activityService.recreateVue(zTickets)
+        companyService.recreateVue(zTickets)
 
         logger.info("Migration done!")
     }
