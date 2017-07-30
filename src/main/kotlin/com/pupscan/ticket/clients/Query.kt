@@ -13,14 +13,14 @@ import java.util.*
 class ClientController(val clientRepository: ClientRepository, val activityRepository: ActivityRepository) {
 
     @RequestMapping("")
-    fun all() = clientRepository.findAll(PageRequest(1, 20))
+    fun all() = clientRepository.findAll(PageRequest(0, 20))
 
     @PostMapping("/search")
     fun search(@RequestBody(required = false) search: String?): Page<Client> {
         if (search == null || search.isBlank()) return all()
         return clientRepository.findAllByOrderByScore(
                 TextCriteria().matchingAny(*search.split(' ').toTypedArray()),
-                PageRequest(1, 20))
+                PageRequest(0, 20))
     }
 
     @RequestMapping("/client/{clientId}")

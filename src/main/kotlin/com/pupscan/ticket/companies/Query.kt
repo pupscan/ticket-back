@@ -12,14 +12,14 @@ import org.springframework.web.bind.annotation.*
 class CompaniesController(val repository: CompanyRepository) {
 
     @RequestMapping("")
-    fun all() = repository.findAll(PageRequest(1, 20))
+    fun all() = repository.findAll(PageRequest(0, 20))
 
     @PostMapping("/search")
     fun search(@RequestBody(required = false) search: String?): Page<Company> {
         if (search == null || search.isBlank()) return all()
         return repository.findAllByOrderByScore(
                 TextCriteria().matchingAny(*search.split(' ').toTypedArray()),
-                PageRequest(1, 20))
+                PageRequest(0, 20))
     }
 
     @RequestMapping("/client/{clientId}")
