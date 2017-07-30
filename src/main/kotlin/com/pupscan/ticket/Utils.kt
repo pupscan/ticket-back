@@ -2,7 +2,6 @@ package com.pupscan.ticket
 
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.util.*
 
 fun String.cleanName() = this.replace("\"", "").replace("\\", "").capitalize()
 fun String.escapeln() = this.replace("\n", "\\n").replace("\r", "\\n").replace("|", "")

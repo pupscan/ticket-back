@@ -10,6 +10,7 @@ import com.pupscan.ticket.clients.ClientService
 import com.pupscan.ticket.tickets.TicketService
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Profile
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
@@ -19,6 +20,7 @@ import org.springframework.web.client.RestTemplate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
+@Profile("prod")
 @Service
 class UpdateData(@Value("\${zendek.authorization}") val zendeskAuthorization: String,
                  val ticketService: TicketService,

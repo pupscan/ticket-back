@@ -3,7 +3,6 @@ package com.pupscan.ticket.clients
 import com.pupscan.ticket.ZTicket
 import com.pupscan.ticket.cleanName
 import org.slf4j.LoggerFactory
-import org.springframework.context.annotation.Profile
 import org.springframework.data.mongodb.core.index.TextIndexed
 import org.springframework.data.mongodb.core.mapping.Document
 import org.springframework.data.mongodb.core.mapping.TextScore
@@ -11,7 +10,6 @@ import org.springframework.data.repository.CrudRepository
 import org.springframework.stereotype.Service
 import java.util.*
 
-@Profile("prod")
 @Service
 class ClientService(val repository: ClientCommandRepository) {
     val logger = LoggerFactory.getLogger(ClientService::class.java)!!
