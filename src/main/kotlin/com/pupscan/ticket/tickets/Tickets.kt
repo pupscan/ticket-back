@@ -1,16 +1,9 @@
-package com.pupscan.ticket
+package com.pupscan.ticket.tickets
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties
-import com.fasterxml.jackson.core.JsonParser
-import com.fasterxml.jackson.databind.DeserializationContext
-import com.fasterxml.jackson.databind.JsonDeserializer
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize
-import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.boot.SpringApplication
-import org.springframework.boot.autoconfigure.SpringBootApplication
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Profile
+import com.pupscan.ticket.ZTicket
+import com.pupscan.ticket.escapeln
+import com.pupscan.ticket.toddMM_hhmm
+import com.pupscan.ticket.truncat
 import org.springframework.data.annotation.Id
 import org.springframework.data.domain.Sort
 import org.springframework.data.mongodb.core.index.TextIndexed
@@ -18,42 +11,18 @@ import org.springframework.data.mongodb.core.mapping.Document
 import org.springframework.data.mongodb.core.mapping.TextScore
 import org.springframework.data.mongodb.core.query.TextCriteria
 import org.springframework.data.repository.CrudRepository
-import org.springframework.http.HttpEntity
-import org.springframework.http.HttpHeaders
-import org.springframework.http.HttpMethod
-import org.springframework.scheduling.annotation.EnableScheduling
-import org.springframework.scheduling.annotation.Scheduled
+import org.springframework.data.repository.Repository
 import org.springframework.stereotype.Service
 import org.springframework.web.bind.annotation.*
-import org.springframework.web.client.RestTemplate
-import org.springframework.web.servlet.config.annotation.CorsRegistry
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
 import java.util.*
 
-@EnableScheduling
-@SpringBootApplication
-class TicketApplication {
-    @Bean
-    fun corsConfigurer() =
-            object : WebMvcConfigurerAdapter() {
-                override fun addCorsMappings(registry: CorsRegistry) {
-                    registry.addMapping("/**").allowedOrigins("*")
-                }
-            }
-}
-
-fun main(args: Array<String>) {
-    SpringApplication.run(TicketApplication::class.java, *args)
-}
-
 @RestController
 @RequestMapping("/ticket")
-class TicketController(val repository: TicketRepository) {
+class TicketsController(val repository: TicketsRepository) {
 
     @RequestMapping("/main")
     fun main(): All {
@@ -152,6 +121,29 @@ class TicketController(val repository: TicketRepository) {
 }
 
 
+@Service
+class TicketService(val repository: TicketsCommandRepository) {
+
+    fun recreateVue(zTickets: List<ZTicket>) {
+        repository.deleteAll()
+        val tickets = zTickets.map {
+            Ticket(UUID.randomUUID().toString(),
+                    it.id,
+                    it.created_at,
+                    it.updated_at,
+                    it.status,
+                    it.via.channel,
+                    it.via.source.from.name,
+                    it.via.source.from.address ?: "",
+                    it.subject,
+                    it.description,
+                    it.tags)
+        }
+        repository.save(tickets)
+    }
+
+}
+
 data class SimpleTicket(val zenDeskId: Long,
                         val status: String,
                         val created: String,
@@ -184,8 +176,7 @@ data class Ticket(@Id val id: String,
                   @TextIndexed(weight = 5F) val tags: List<String>,
                   @TextScore val score: Float = 0F)
 
-interface TicketRepository : CrudRepository<Ticket, String> {
-    fun countByTags(tag: String): Int
+interface TicketsRepository : Repository<Ticket, String> {
     fun countByStatus(status: String): Int
     fun findByCreatedDateBetween(from: LocalDate, to: LocalDate, order: Sort = Sort(Sort.Order(Sort.Direction.ASC,
             "CreatedDate")))
@@ -194,96 +185,4 @@ interface TicketRepository : CrudRepository<Ticket, String> {
     fun findAllByOrderByScoreDescCreatedDateDesc(textCriteria: TextCriteria): List<Ticket>
 }
 
-
-@Profile("prod")
-@Service
-class UpdateData(@Value("\${zendek.authorization}") val zendeskAuthorization: String,
-                 val repository: TicketRepository) {
-    val logger = LoggerFactory.getLogger(UpdateData::class.java)!!
-    init {
-        logger.info("Connect to Zendesk with authorizationCode=${zendeskAuthorization.safeDisplaySecret()}")
-    }
-
-    @Scheduled(fixedDelay = (3_600_000 * 3), initialDelay = 0)
-    fun run() {
-        logger.info("Migration Start!")
-
-        repository.deleteAll()
-        var startTime = 0
-        var endTime = 0
-
-        do {
-            startTime = endTime
-
-            logger.info("Load page from startTime $startTime")
-            val restTemplate = RestTemplate().exchange(
-                    "https://pupscan.zendesk.com/api/v2/incremental/tickets.json?start_time=$startTime",
-                    HttpMethod.GET,
-                    HttpEntity<HttpHeaders>(HttpHeaders().apply { set("Authorization", "Basic $zendeskAuthorization") }),
-                    ZenDesk::class.java)
-            val tickets = restTemplate.body.tickets
-            tickets.map {
-                Ticket(UUID.randomUUID().toString(),
-                        it.id,
-                        it.created_at,
-                        it.updated_at,
-                        it.status,
-                        it.via.channel,
-                        it.via.source.from.name,
-                        it.via.source.from.address ?: "",
-                        it.subject,
-                        it.description,
-                        it.tags)
-            }.forEach { repository.save(it) }
-            endTime = restTemplate.body.end_time
-            logger.info("${tickets.size} tickets loaded")
-        } while (startTime != endTime)
-
-        logger.info("Migration done!")
-    }
-}
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-data class ZenDesk(val tickets: List<ZTicket>, val end_time: Int)
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-data class ZTicket(val id: Long,
-                   @JsonDeserialize(using = LocalDateTimeDeserializer::class) val created_at: LocalDateTime,
-                   @JsonDeserialize(using = LocalDateTimeDeserializer::class) val updated_at: LocalDateTime,
-                   val status: String,
-                   val subject: String,
-                   val description: String,
-                   val tags: List<String>,
-                   val via: Via)
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-data class Via(val channel: String, val source: Source)
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-data class Source(val from: From = From())
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-data class From(val name: String = "", val address: String? = "")
-
-
-class LocalDateTimeDeserializer : JsonDeserializer<LocalDateTime>() {
-    override fun deserialize(p: JsonParser, ctxt: DeserializationContext): LocalDateTime {
-        return LocalDateTime.parse(p.getText(), DateTimeFormatter.ISO_DATE_TIME)
-    }
-
-}
-
-
-
-/** Util **/
-
-fun String.escapeln() = this.replace("\n", "\\n").replace("\r", "\\n").replace("|", "")
-fun String.truncat(length: Int) = this.substring(0, if (length > this.length) this.length else length) + "..."
-fun String.safeDisplaySecret(): String {
-    if (this.isBlank()) return ""
-    return "X".repeat(this.length - 3) + this.substring(this.length - 3)
-}
-
-//.format(DateTimeFormatter.ofPattern("dd/MM hh:mm")
-val DDMM_HHMM = DateTimeFormatter.ofPattern("dd/MM hh:mm")
-fun LocalDateTime.toddMM_hhmm() = this.format(DDMM_HHMM)
+interface TicketsCommandRepository : CrudRepository<Ticket, String>
