@@ -37,6 +37,8 @@ class ClientService(val repository: ClientCommandRepository) {
             status.contains("deleted") -> false
             mail.isBlank() -> false
             mail.contains("@").not() -> false
+            mail.contains("noreply") -> false
+            mail.contains("no-reply") -> false
             mail.contains("pupscan.com") -> false
             mail.contains("indiegogo.com") -> false
             mail.contains("kisskissbankbank.com") -> false

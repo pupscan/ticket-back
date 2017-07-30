@@ -1,9 +1,8 @@
 package com.pupscan.ticket.clients
 
+import org.springframework.data.mongodb.core.query.TextCriteria
 import org.springframework.data.repository.Repository
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import java.util.*
 
 @RestController
@@ -11,7 +10,15 @@ import java.util.*
 class ClientController(val clientRepository: ClientRepository, val activityRepository: ActivityRepository) {
 
     @RequestMapping("")
-    fun all() = Response(clientRepository.findAll().take(20), clientRepository.count())
+    fun all() = Response(clientRepository.findAll().takeLast(20), clientRepository.count())
+
+    @PostMapping("/search")
+    fun search(@RequestBody(required = false) search: String?): Response {
+        if (search == null || search.isBlank()) return all()
+        val clients = clientRepository.findAllByOrderByScore(TextCriteria()
+                .matchingAny(*search.split(' ').toTypedArray()))
+        return Response(clients, clients.size.toLong())
+    }
 
     @RequestMapping("/client/{clientId}")
     fun client(@PathVariable clientId: String = "") = clientRepository.findById(clientId)
@@ -27,6 +34,7 @@ interface ClientRepository : Repository<Client, String> {
     fun findAll(): List<Client>
     fun findById(id: String): List<Client>
     fun findByEmail(email: String): Optional<Client>
+    fun findAllByOrderByScore(matchingAny: TextCriteria): List<Client>
 }
 
 interface ActivityRepository : Repository<Activity, String> {
