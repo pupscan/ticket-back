@@ -12,15 +12,10 @@ import java.util.*
 @RequestMapping("/clients")
 class ClientController(val clientRepository: ClientRepository, val activityRepository: ActivityRepository) {
 
-    @RequestMapping("")
-    fun all(@RequestParam(value="page", defaultValue="0") page: Int,
-            @RequestParam(value="size", defaultValue="20") size: Int) = clientRepository.findAll(PageRequest(page, size))
-
     @PostMapping("/search")
-    fun search(@RequestBody(required = false) search: String?,
-               @RequestParam(value="page", defaultValue="0") page: Int,
-               @RequestParam(value="size", defaultValue="20") size: Int): Page<Client> {
-        if (search == null || search.isBlank()) return all(page, size)
+    fun search(@RequestBody(required = false) body: Body): Page<Client> {
+        val (search, page, size) = body
+        if (search.isBlank()) return clientRepository.findAll(PageRequest(page, size))
         return clientRepository.findAllByOrderByScore(
                 TextCriteria().matchingAny(*search.split(' ').toTypedArray()),
                 PageRequest(page, size))
@@ -32,6 +27,8 @@ class ClientController(val clientRepository: ClientRepository, val activityRepos
     @RequestMapping("/client/activities/{clientId}")
     fun activities(@PathVariable clientId: String = "") = activityRepository.findAllByClientIdOrderByDate(clientId)
 }
+
+data class Body(val search: String = "", val page: Int = 0, val size: Int = 20)
 
 interface ClientRepository : Repository<Client, String> {
     fun findAll(pageable: Pageable): Page<Client>
