@@ -29,18 +29,6 @@ class CompanyService(val repository: CompanyCommandRepository) {
         repository.save(companiesWithCountry)
     }
 
-
-    private fun findAndSetCountryToCompanies(countries: List<String>,
-                                             companies: List<Company>,
-                                             zTickets: List<ZTicket>): List<Company> {
-        return companies.map { company ->
-            val message = zTickets.filter { it.via.source.from.address == company.email }
-                    .map { it.description }.reduce { acc, s -> acc + s }
-            countries.find { message.contains(it, true) }?.let { company.apply { country = it.replace(" ", "-") } } ?: company
-        }
-    }
-
-
     private fun companyFilter(zTicket: ZTicket): Boolean {
         val status = zTicket.tags
         val mail = zTicket.via.source.from.address ?: ""
@@ -55,8 +43,24 @@ class CompanyService(val repository: CompanyCommandRepository) {
             else -> false
         }
     }
-}
 
+    private fun findAndSetCountryToCompanies(countries: List<String>,
+                                             companies: List<Company>,
+                                             zTickets: List<ZTicket>): List<Company> {
+        return companies.map { company ->
+            val concatenatedMessages = concatAllSubjectAndDescription(zTickets, company)
+            val countryFound = findCountry(countries, concatenatedMessages)
+            company.apply { country = countryFound.replace(" ", "-") }
+        }
+    }
+
+    private fun concatAllSubjectAndDescription(zTickets: List<ZTicket>, company: Company)
+            = zTickets.filter { it.via.source.from.address == company.email }
+            .map { it.description + " " + it.subject }
+            .reduce { acc, s -> acc + s }
+
+    private fun findCountry(countries: List<String>, message: String) = countries.find { message.contains(it, true) } ?: ""
+}
 
 @Document
 data class Company(val id: String,
@@ -88,4 +92,4 @@ Islands,Somalia,South Africa,South Georgia And The South Sandwich Islands,Spain,
 Sweden,Switzerland,Syrian Arab Republic,Taiwan,Province Of China,Tajikistan,Tanzania,United Republic Of,Thailand,Togo,Tokelau,Tonga,
 Trinidad And Tobago,Tunisia,Turkey,Turkmenistan,Turks And Caicos Islands,Tuvalu,Uganda,Ukraine,United Arab Emirates,United Kingdom,United
 States,United States Minor Outlying Islands,Uruguay,Uzbekistan,Vanuatu,Venezuela,Viet Nam,Virgin Islands,British,Virgin Islands,U.s.,
-Wallis And Futuna,Western Sahara,Yemen,Zambia,Zimbabwe""".split(",")
+Wallis And Futuna,Western Sahara,Yemen,Zambia,Zimbabwe""".replace("\n", "").split(",")
