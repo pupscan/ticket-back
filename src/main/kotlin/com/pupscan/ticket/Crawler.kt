@@ -34,7 +34,7 @@ class UpdateData(@Value("\${zendek.authorization}") val zendeskAuthorization: St
         logger.info("Connect to Zendesk with authorizationCode=${zendeskAuthorization.safeDisplaySecret()}")
     }
 
-    @Scheduled(fixedDelay = (3_600_000 * 3), initialDelay = 0)
+    @Scheduled(fixedDelay = (3_600_000 * 6), initialDelay = 0)
     fun run() {
         logger.info("Migration Start!")
         var startTime = 0
