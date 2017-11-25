@@ -2,6 +2,8 @@ package com.pupscan.ticket
 
 import org.springframework.boot.SpringApplication
 import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Profile
 import org.springframework.core.Ordered
 import org.springframework.core.annotation.Order
 import org.springframework.scheduling.annotation.EnableScheduling
@@ -10,12 +12,31 @@ import org.springframework.stereotype.Component
 import javax.servlet.*
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
+import org.springframework.security.config.annotation.web.builders.HttpSecurity
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter
+
+
 
 
 @EnableScheduling
-@EnableResourceServer
 @SpringBootApplication
 class TicketApplication
+
+@Profile("prod")
+@EnableResourceServer
+@Configuration
+class AuthenticationConfiguration
+
+@Profile("default")
+@Configuration
+class SecurityConfiguration : WebSecurityConfigurerAdapter() {
+
+    @Throws(Exception::class)
+    override fun configure(httpSecurity: HttpSecurity) {
+        httpSecurity.authorizeRequests().antMatchers("/").permitAll()
+    }
+
+}
 
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)

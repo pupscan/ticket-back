@@ -100,9 +100,27 @@ class TicketsController(val repository: TicketsRepository) {
     @RequestMapping("/status/{statusName}")
     fun countByStatus(@PathVariable statusName: String = "new") = repository.countByStatus(statusName)
 
+
     @PostMapping("/search")
     fun search(@RequestBody(required = false) search: String?): List<SimpleTicket> {
         if (search == null || search.isBlank()) return all()
+        if (search.startsWith("tags:", true)) {
+            val tagsToSearch = search.replace("tags:", "", true)
+                    .split(' ')
+            return repository.findByTagsLikeOrderByCreatedDateDesc(tagsToSearch)
+                    .map {
+                        SimpleTicket(
+                                it.zenDeskId,
+                                it.status,
+                                it.createdDate.toddMM_hhmm(),
+                                it.updatedDate.toddMM_hhmm(),
+                                it.tags,
+                                it.name,
+                                it.mail,
+                                it.messageSubject,
+                                it.message.escapeln().truncat(200))
+                    }
+        }
         return repository.findAllByOrderByScoreDescCreatedDateDesc(TextCriteria().matchingAny(*search.split(' ')
                 .toTypedArray()))
                 .map {
@@ -178,11 +196,9 @@ data class Ticket(@Id val id: String,
 
 interface TicketsRepository : Repository<Ticket, String> {
     fun countByStatus(status: String): Int
-    fun findByCreatedDateBetween(from: LocalDate, to: LocalDate, order: Sort = Sort(Sort.Order(Sort.Direction.ASC,
-            "CreatedDate")))
-            : List<Ticket>
-
+    fun findByCreatedDateBetween(from: LocalDate, to: LocalDate, order: Sort = Sort(Sort.Order(Sort.Direction.ASC, "CreatedDate"))): List<Ticket>
     fun findAllByOrderByScoreDescCreatedDateDesc(textCriteria: TextCriteria): List<Ticket>
+    fun findByTagsLikeOrderByCreatedDateDesc(tags: List<String>): List<Ticket>
 }
 
 interface TicketsCommandRepository : CrudRepository<Ticket, String>
